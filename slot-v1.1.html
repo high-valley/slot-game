@@ -3,138 +3,122 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Slot Improved</title>
+<title>Slot Game</title>
 <style>
 body{
-  background:#111;color:#fff;text-align:center;
+  background:#111;
+  color:#fff;
+  text-align:center;
 }
+
 #reels{
-  display:flex;justify-content:center;
+  display:flex;
+  justify-content:center;
 }
+
 canvas{
   border:2px solid #fff;
   margin:5px;
-}
-#line{
-  height:2px;
-  background:#fff;
-  width:260px;
-  margin:10px auto;
-}
-.flash{
-  animation:flash 0.2s;
-}
-@keyframes flash{
-  0%{background:#fff;}
-  100%{background:#111;}
 }
 </style>
 </head>
 <body>
 
-<h2>SLOT</h2>
+<h2>Slot Game</h2>
 <div id="reels"></div>
-<div id="line"></div>
-<button onclick="start()">START</button>
+<button onclick="startSpin()">START</button>
 <p id="result"></p>
 
 <script>
-const canvasList=[];
-const ctxList=[];
-const size=100;
-const symbols=["7","🔔","🍒","💧"];
+const REEL_COUNT = 3;
+const SYMBOLS = ["🔥","💧","⚡","⭐","💀"];
+const REEL_HEIGHT = 100;
+const VISIBLE_ROWS = 3;
+const SPIN_SPEED = 8;
 
-let reels=[
-  {pos:0, spinning:false},
-  {pos:0, spinning:false},
-  {pos:0, spinning:false}
-];
+let reels = [];
 
-const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+function createReels(){
+  const container = document.getElementById("reels");
 
-function playClick(){
-  const osc = audioCtx.createOscillator();
-  const gain = audioCtx.createGain();
-  osc.connect(gain);
-  gain.connect(audioCtx.destination);
-  osc.frequency.value=1000;
-  gain.gain.value=0.1;
-  osc.start();
-  osc.stop(audioCtx.currentTime+0.05);
-}
+  for(let i=0;i<REEL_COUNT;i++){
+    const canvas = document.createElement("canvas");
+    canvas.width = 100;
+    canvas.height = REEL_HEIGHT * VISIBLE_ROWS;
+    container.appendChild(canvas);
 
-function playPerfect(){
-  const osc = audioCtx.createOscillator();
-  const gain = audioCtx.createGain();
-  osc.connect(gain);
-  gain.connect(audioCtx.destination);
-  osc.frequency.value=1500;
-  gain.gain.value=0.2;
-  osc.start();
-  osc.stop(audioCtx.currentTime+0.1);
-}
+    const ctx = canvas.getContext("2d");
 
-function create(){
-  const container=document.getElementById("reels");
-  for(let i=0;i<3;i++){
-    const c=document.createElement("canvas");
-    c.width=size;
-    c.height=size*3;
-    container.appendChild(c);
-    canvasList.push(c);
-    ctxList.push(c.getContext("2d"));
+    reels.push({
+      canvas,
+      ctx,
+      offset:0,
+      spinning:false
+    });
 
-    c.addEventListener("click",()=>stop(i));
+    canvas.addEventListener("click", ()=>stopReel(i));
   }
 }
 
 function draw(){
-  for(let i=0;i<3;i++){
-    const ctx=ctxList[i];
-    ctx.clearRect(0,0,size,size*3);
+  reels.forEach((reel)=>{
+    const ctx = reel.ctx;
+    const w = reel.canvas.width;
+    const h = reel.canvas.height;
 
-    for(let j=0;j<4;j++){
-      const y=((j*size)-reels[i].pos)% (symbols.length*size);
+    ctx.clearRect(0,0,w,h);
 
-      ctx.strokeStyle="#fff";
-      ctx.strokeRect(10,y+10,size-20,size-20);
+    for(let i=0;i<SYMBOLS.length;i++){
+      let y = ((i * REEL_HEIGHT) + reel.offset) % (SYMBOLS.length * REEL_HEIGHT);
 
-      ctx.font="40px sans-serif";
-      ctx.textAlign="center";
-      ctx.textBaseline="middle";
-      ctx.fillText(symbols[j],size/2,y+size/2);
+      // 図柄枠
+      ctx.strokeStyle = "#fff";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(10, y+10, w-20, REEL_HEIGHT-20);
+
+      // 中央寄せ
+      ctx.font = "30px sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(SYMBOLS[i], w/2, y + REEL_HEIGHT/2);
     }
 
     // 中央ライン
-    ctx.strokeStyle="yellow";
+    ctx.strokeStyle = "yellow";
+    ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(0,size*1.5);
-    ctx.lineTo(size,size*1.5);
+    ctx.moveTo(0, h/2);
+    ctx.lineTo(w, h/2);
     ctx.stroke();
-  }
-}
-
-function loop(){
-  for(let i=0;i<3;i++){
-    if(reels[i].spinning){
-      reels[i].pos -= 10; // ←上から下に流れる
-    }
-  }
-  draw();
-  requestAnimationFrame(loop);
-}
-
-function start(){
-  reels.forEach(r=>{
-    r.spinning=true;
   });
 }
 
-function stop(i){
-  if(!reels[i].spinning) return;
-  reels[i].spinning=false;
+function update(){
+  reels.forEach(reel=>{
+    if(reel.spinning){
+      // ★回転方向修正（上→下）
+      reel.offset -= SPIN_SPEED;
 
-  playClick();
+      if(reel.offset < 0){
+        reel.offset += SYMBOLS.length * REEL_HEIGHT;
+      }
+    }
+  });
+
+  draw();
+  requestAnimationFrame(update);
+}
+
+function startSpin(){
+  reels.forEach(reel=>{
+    reel.spinning = true;
+    // ★offsetはリセットしない → 前回位置から再開
+  });
+}
+
+function stopReel(index){
+  const reel = reels[index];
+  reel.spinning = false;
 
   if(reels.every(r=>!r.spinning)){
     judge();
@@ -142,24 +126,22 @@ function stop(i){
 }
 
 function judge(){
-  const results=reels.map(r=>{
-    return Math.round((r.pos/size)%symbols.length);
+  let results = reels.map(reel=>{
+    return Math.floor((reel.offset + REEL_HEIGHT/2) / REEL_HEIGHT) % SYMBOLS.length;
   });
 
-  let perfect = results.every(r=>r===results[0]);
+  let first = results[0];
+  let isPerfect = results.every(r=>r === first);
 
-  if(perfect){
-    playPerfect();
-    document.body.classList.add("flash");
-    setTimeout(()=>document.body.classList.remove("flash"),200);
-    document.getElementById("result").innerText="PERFECT!";
+  if(isPerfect){
+    document.getElementById("result").innerText = "PERFECT!";
   }else{
-    document.getElementById("result").innerText="MISS";
+    document.getElementById("result").innerText = "MISS";
   }
 }
 
-create();
-loop();
+createReels();
+update();
 </script>
 
 </body>
