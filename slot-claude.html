@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>SLOT BATTLE</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Noto+Sans+JP:wght@400;700&display=swap');
+
+:root {
+–bg: #0a0a12;
+–panel: #11111e;
+–border: #2a2a44;
+–accent: #e8c840;
+–accent2: #ff4e6a;
+–accent3: #4ef0c4;
+–text: #e8e8f0;
+–dim: #6060a0;
+–perfect: #ffd700;
+–great: #c084fc;
+–good: #60a5fa;
+–miss: #f87171;
+–reel-bg: #080810;
+–reel-border: #3a3a5a;
+}
+
+- { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+body {
+background: var(–bg);
+color: var(–text);
+font-family: ‘Noto Sans JP’, sans-serif;
+min-height: 100dvh;
+display: flex;
+flex-direction: column;
+align-items: center;
+overflow: hidden;
+position: relative;
+}
+
+/* Starfield bg */
+body::before {
+content: ‘’;
+position: fixed;
+inset: 0;
+background-image:
+radial-gradient(1px 1px at 20% 15%, rgba(255,255,255,0.4) 0%, transparent 100%),
+radial-gradient(1px 1px at 80% 30%, rgba(255,255,255,0.3) 0%, transparent 100%),
+radial-gradient(1px 1px at 50% 60%, rgba(255,255,255,0.35) 0%, transparent 100%),
+radial-gradient(1px 1px at 10% 80%, rgba(255,255,255,0.25) 0%, transparent 100%),
+radial-gradient(1px 1px at 90% 70%, rgba(255,255,255,0.3) 0%, transparent 100%),
+radial-gradient(2px 2px at 35% 45%, rgba(200,200,255,0.2) 0%, transparent 100%),
+radial-gradient(1px 1px at 65% 85%, rgba(255,255,255,0.2) 0%, transparent 100%);
+pointer-events: none;
+z-index: 0;
+}
+
+#app {
+width: 100%;
+max-width: 420px;
+min-height: 100dvh;
+display: flex;
+flex-direction: column;
+align-items: center;
+padding: 16px 12px 20px;
+gap: 14px;
+position: relative;
+z-index: 1;
+}
+
+/* Title */
+.title {
+font-family: ‘Orbitron’, monospace;
+font-size: 22px;
+font-weight: 900;
+letter-spacing: 0.15em;
+color: var(–accent);
+text-shadow: 0 0 20px rgba(232,200,64,0.5), 0 0 40px rgba(232,200,64,0.2);
+text-align: center;
+}
+
+/* Enemy area */
+.enemy-area {
+width: 100%;
+background: var(–panel);
+border: 1px solid var(–border);
+border-radius: 14px;
+padding: 14px 16px;
+display: flex;
+flex-direction: column;
+gap: 10px;
+}
+
+.enemy-header {
+display: flex;
+justify-content: space-between;
+align-items: center;
+}
+
+.enemy-name {
+font-family: ‘Orbitron’, monospace;
+font-size: 13px;
+font-weight: 700;
+color: var(–accent2);
+letter-spacing: 0.1em;
+}
+
+.hp-label {
+font-family: ‘Orbitron’, monospace;
+font-size: 11px;
+color: var(–dim);
+}
+
+#hp-text {
+font-family: ‘Orbitron’, monospace;
+font-size: 11px;
+color: var(–text);
+font-weight: 700;
+}
+
+.hp-bar-outer {
+width: 100%;
+height: 12px;
+background: #1a1a2e;
+border-radius: 6px;
+overflow: hidden;
+position: relative;
+border: 1px solid var(–border);
+}
+
+#hp-bar {
+height: 100%;
+background: linear-gradient(90deg, #ff4e6a, #ff8c6a);
+border-radius: 6px;
+transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+position: relative;
+}
+
+#hp-bar::after {
+content: ‘’;
+position: absolute;
+top: 2px;
+left: 4px;
+right: 4px;
+height: 3px;
+background: rgba(255,255,255,0.3);
+border-radius: 2px;
+}
+
+.enemy-sprite {
+font-size: 52px;
+text-align: center;
+line-height: 1;
+filter: drop-shadow(0 0 12px rgba(255,78,106,0.4));
+transition: transform 0.3s;
+}
+
+.enemy-sprite.hit {
+animation: enemyHit 0.4s ease;
+}
+
+@keyframes enemyHit {
+0% { transform: translateX(0); }
+20% { transform: translateX(-10px); }
+40% { transform: translateX(8px); }
+60% { transform: translateX(-6px); }
+80% { transform: translateX(4px); }
+100% { transform: translateX(0); }
+}
+
+/* Target area */
+.target-area {
+width: 100%;
+background: var(–panel);
+border: 1px solid var(–border);
+border-radius: 12px;
+padding: 10px 16px;
+display: flex;
+align-items: center;
+justify-content: space-between;
+gap: 8px;
+}
+
+.target-label {
+font-family: ‘Orbitron’, monospace;
+font-size: 10px;
+color: var(–dim);
+letter-spacing: 0.1em;
+white-space: nowrap;
+}
+
+.target-symbols {
+display: flex;
+gap: 8px;
+align-items: center;
+}
+
+.target-sym {
+font-size: 22px;
+width: 34px;
+height: 34px;
+display: flex;
+align-items: center;
+justify-content: center;
+background: #1a1a2e;
+border-radius: 8px;
+border: 1px solid var(–accent);
+box-shadow: 0 0 8px rgba(232,200,64,0.2);
+}
+
+/* Reels area */
+.reels-container {
+width: 100%;
+display: flex;
+gap: 8px;
+justify-content: center;
+}
+
+.reel-wrapper {
+flex: 1;
+display: flex;
+flex-direction: column;
+align-items: center;
+gap: 6px;
+}
+
+.reel-frame {
+width: 100%;
+aspect-ratio: 0.75;
+background: var(–reel-bg);
+border: 2px solid var(–reel-border);
+border-radius: 12px;
+overflow: hidden;
+position: relative;
+cursor: pointer;
+transition: border-color 0.2s;
+box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+}
+
+.reel-frame.spinning {
+border-color: var(–accent);
+box-shadow: inset 0 0 20px rgba(0,0,0,0.5), 0 0 12px rgba(232,200,64,0.2);
+}
+
+.reel-frame.stopped {
+border-color: var(–accent3);
+box-shadow: inset 0 0 20px rgba(0,0,0,0.5), 0 0 12px rgba(78,240,196,0.25);
+}
+
+/* Center line overlay */
+.reel-frame::before {
+content: ‘’;
+position: absolute;
+top: 50%;
+left: 0;
+right: 0;
+height: 2px;
+transform: translateY(-50%);
+background: linear-gradient(90deg, transparent, rgba(232,200,64,0.5), transparent);
+z-index: 10;
+pointer-events: none;
+}
+
+/* Top/bottom fade */
+.reel-frame::after {
+content: ‘’;
+position: absolute;
+inset: 0;
+background: linear-gradient(
+to bottom,
+rgba(8,8,16,0.8) 0%,
+transparent 25%,
+transparent 75%,
+rgba(8,8,16,0.8) 100%
+);
+z-index: 5;
+pointer-events: none;
+}
+
+.reel-inner {
+position: absolute;
+width: 100%;
+display: flex;
+flex-direction: column;
+align-items: center;
+will-change: transform;
+}
+
+.reel-cell {
+width: 100%;
+display: flex;
+align-items: center;
+justify-content: center;
+flex-shrink: 0;
+}
+
+.reel-cell span {
+line-height: 1;
+user-select: none;
+}
+
+.judgment-badge {
+height: 22px;
+display: flex;
+align-items: center;
+justify-content: center;
+font-family: ‘Orbitron’, monospace;
+font-size: 10px;
+font-weight: 700;
+letter-spacing: 0.12em;
+padding: 0 8px;
+border-radius: 4px;
+min-width: 60px;
+opacity: 0;
+transform: translateY(4px);
+transition: opacity 0.3s, transform 0.3s;
+}
+
+.judgment-badge.show {
+opacity: 1;
+transform: translateY(0);
+}
+
+.judgment-badge.PERFECT { background: rgba(255,215,0,0.15); color: var(–perfect); border: 1px solid var(–perfect); }
+.judgment-badge.GREAT   { background: rgba(192,132,252,0.15); color: var(–great); border: 1px solid var(–great); }
+.judgment-badge.GOOD    { background: rgba(96,165,250,0.15); color: var(–good); border: 1px solid var(–good); }
+.judgment-badge.MISS    { background: rgba(248,113,113,0.15); color: var(–miss); border: 1px solid var(–miss); }
+
+/* Result area */
+.result-area {
+width: 100%;
+min-height: 52px;
+display: flex;
+flex-direction: column;
+align-items: center;
+justify-content: center;
+gap: 4px;
+}
+
+#damage-text {
+font-family: ‘Orbitron’, monospace;
+font-size: 28px;
+font-weight: 900;
+color: var(–accent);
+text-shadow: 0 0 20px rgba(232,200,64,0.6);
+opacity: 0;
+transform: scale(0.5) translateY(10px);
+transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+#damage-text.show {
+opacity: 1;
+transform: scale(1) translateY(0);
+}
+
+#result-sub {
+font-size: 12px;
+color: var(–dim);
+letter-spacing: 0.05em;
+opacity: 0;
+transition: opacity 0.3s 0.2s;
+}
+
+#result-sub.show { opacity: 1; }
+
+/* Start/Reset button */
+#main-btn {
+width: 100%;
+max-width: 280px;
+height: 52px;
+border: none;
+border-radius: 26px;
+font-family: ‘Orbitron’, monospace;
+font-size: 15px;
+font-weight: 700;
+letter-spacing: 0.15em;
+cursor: pointer;
+transition: all 0.2s;
+position: relative;
+overflow: hidden;
+}
+
+#main-btn:active { transform: scale(0.96); }
+
+#main-btn.start-btn {
+background: linear-gradient(135deg, #e8c840, #ff8c40);
+color: #0a0a12;
+box-shadow: 0 4px 20px rgba(232,200,64,0.3);
+}
+
+#main-btn.reset-btn {
+background: linear-gradient(135deg, #4ef0c4, #4090f0);
+color: #0a0a12;
+box-shadow: 0 4px 20px rgba(78,240,196,0.3);
+}
+
+#main-btn.disabled {
+background: #2a2a3a;
+color: var(–dim);
+cursor: default;
+box-shadow: none;
+}
+
+/* Instruction */
+.instruction {
+font-size: 11px;
+color: var(–dim);
+letter-spacing: 0.05em;
+text-align: center;
+min-height: 16px;
+}
+
+/* Victory overlay */
+#victory-overlay {
+position: fixed;
+inset: 0;
+background: rgba(0,0,0,0.85);
+display: flex;
+flex-direction: column;
+align-items: center;
+justify-content: center;
+gap: 20px;
+z-index: 100;
+opacity: 0;
+pointer-events: none;
+transition: opacity 0.5s;
+}
+
+#victory-overlay.show {
+opacity: 1;
+pointer-events: all;
+}
+
+.victory-title {
+font-family: ‘Orbitron’, monospace;
+font-size: 36px;
+font-weight: 900;
+color: var(–accent);
+text-shadow: 0 0 40px rgba(232,200,64,0.8);
+animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+0%, 100% { transform: scale(1); }
+50% { transform: scale(1.05); }
+}
+
+.victory-sub {
+font-size: 15px;
+color: var(–text);
+opacity: 0.7;
+}
+
+#victory-btn {
+padding: 14px 40px;
+border: none;
+border-radius: 28px;
+background: linear-gradient(135deg, #e8c840, #ff8c40);
+color: #0a0a12;
+font-family: ‘Orbitron’, monospace;
+font-size: 14px;
+font-weight: 700;
+letter-spacing: 0.15em;
+cursor: pointer;
+box-shadow: 0 4px 20px rgba(232,200,64,0.4);
+}
+
+.stars {
+font-size: 40px;
+letter-spacing: 8px;
+animation: starFloat 2s ease-in-out infinite;
+}
+
+@keyframes starFloat {
+0%, 100% { transform: translateY(0); }
+50% { transform: translateY(-8px); }
+}
+
+/* Tap hint on reel */
+.tap-hint {
+position: absolute;
+inset: 0;
+display: flex;
+align-items: center;
+justify-content: center;
+z-index: 20;
+pointer-events: none;
+opacity: 0;
+transition: opacity 0.3s;
+}
+
+.reel-frame.spinning .tap-hint {
+opacity: 1;
+animation: hintPulse 1s ease-in-out infinite;
+}
+
+@keyframes hintPulse {
+0%, 100% { opacity: 0.6; }
+50% { opacity: 1; }
+}
+
+.tap-hint-inner {
+background: rgba(232,200,64,0.12);
+border: 1px solid rgba(232,200,64,0.3);
+border-radius: 8px;
+padding: 4px 8px;
+font-size: 9px;
+color: var(–accent);
+font-family: ‘Orbitron’, monospace;
+letter-spacing: 0.1em;
+}
+</style>
+
+</head>
+<body>
+<div id="app">
+  <div class="title">⚔ SLOT BATTLE</div>
+
+  <!-- Enemy -->
+
+  <div class="enemy-area">
+    <div class="enemy-header">
+      <span class="enemy-name">DARK DRAGON</span>
+      <span class="hp-label">HP &nbsp;<span id="hp-text">100 / 100</span></span>
+    </div>
+    <div class="hp-bar-outer">
+      <div id="hp-bar" style="width:100%"></div>
+    </div>
+    <div class="enemy-sprite" id="enemy-sprite">🐉</div>
+  </div>
+
+  <!-- Target -->
+
+  <div class="target-area">
+    <span class="target-label">TARGET</span>
+    <div class="target-symbols" id="target-display"></div>
+  </div>
+
+  <!-- Reels -->
+
+  <div class="reels-container" id="reels-container">
+    <!-- Generated by JS -->
+  </div>
+
+  <!-- Result -->
+
+  <div class="result-area">
+    <div id="damage-text">— DMG</div>
+    <div id="result-sub"></div>
+  </div>
+
+  <!-- Instruction -->
+
+  <div class="instruction" id="instruction">STARTを押してリールを回転させよう</div>
+
+  <!-- Button -->
+
+<button id="main-btn" class="start-btn" onclick="onMainBtn()">START</button>
+
+</div>
+
+<!-- Victory -->
+
+<div id="victory-overlay">
+  <div class="stars">⭐⭐⭐</div>
+  <div class="victory-title">VICTORY!</div>
+  <div class="victory-sub">敵を倒した！</div>
+  <button id="victory-btn" onclick="onVictoryBtn()">PLAY AGAIN</button>
+</div>
+
+<script>
+// ============================================================
+// CONFIG
+// ============================================================
+const SYMBOLS = ['🔥','💧','⚡','🌿','💎','☀️','🌙','❄️'];
+const REEL_COUNT = 3;
+const VISIBLE_CELLS = 5;       // visible cells in reel window
+const CELL_SIZE = 64;          // px per cell
+const SPIN_SPEED = 4;          // cells per frame * CELL_SIZE
+const SPIN_FPS = 60;
+
+const DAMAGE_BASE = 30;
+const DAMAGE_MULTIPLIER = { PERFECT: 2.0, GREAT: 1.5, GOOD: 1.0, MISS: 0.3 };
+const JUDGMENT_RANGE = { PERFECT: 0, GREAT: 1, GOOD: 2 };
+
+const MAX_HP = 100;
+
+// ============================================================
+// STATE
+// ============================================================
+let enemyHP = MAX_HP;
+let enemyMaxHP = MAX_HP;
+let targets = [];           // target symbol index per reel
+let reels = [];             // reel state objects
+let gamePhase = 'idle';     // idle | spinning | result
+
+// ============================================================
+// INIT
+// ============================================================
+function init() {
+  enemyHP = MAX_HP;
+  targets = Array.from({ length: REEL_COUNT }, () => Math.floor(Math.random() * SYMBOLS.length));
+  reels = [];
+  gamePhase = 'idle';
+
+  updateHPUI();
+  renderTargets();
+  buildReels();
+  clearResult();
+  setInstruction('STARTを押してリールを回転させよう');
+  setMainBtn('start');
+  document.getElementById('enemy-sprite').classList.remove('hit');
+}
+
+// ============================================================
+// REEL BUILD
+// ============================================================
+function buildReels() {
+  const container = document.getElementById('reels-container');
+  container.innerHTML = '';
+
+  for (let i = 0; i < REEL_COUNT; i++) {
+    // Create a shuffled long strip (looping)
+    const strip = [];
+    for (let j = 0; j < 40; j++) strip.push(Math.floor(Math.random() * SYMBOLS.length));
+
+    const reel = {
+      index: i,
+      strip,           // array of symbol indices
+      offset: 0,       // current pixel offset (top of visible area)
+      spinning: false,
+      stopped: false,
+      judgment: null,
+      centerSymIndex: null,
+      frameEl: null,
+      innerEl: null,
+      badgeEl: null,
+      rafId: null,
+      lastTime: null,
+    };
+
+    // DOM
+    const wrapper = document.createElement('div');
+    wrapper.className = 'reel-wrapper';
+
+    const frame = document.createElement('div');
+    frame.className = 'reel-frame';
+    frame.style.height = (CELL_SIZE * VISIBLE_CELLS) + 'px';
+    frame.addEventListener('click', () => onReelTap(i));
+    frame.addEventListener('touchend', (e) => { e.preventDefault(); onReelTap(i); });
+
+    const tapHint = document.createElement('div');
+    tapHint.className = 'tap-hint';
+    tapHint.innerHTML = '<div class="tap-hint-inner">TAP</div>';
+    frame.appendChild(tapHint);
+
+    const inner = document.createElement('div');
+    inner.className = 'reel-inner';
+    frame.appendChild(inner);
+
+    const badge = document.createElement('div');
+    badge.className = 'judgment-badge';
+
+    wrapper.appendChild(frame);
+    wrapper.appendChild(badge);
+    container.appendChild(wrapper);
+
+    reel.frameEl = frame;
+    reel.innerEl = inner;
+    reel.badgeEl = badge;
+    reels.push(reel);
+
+    // Initial render
+    renderReelCells(reel);
+  }
+}
+
+function renderReelCells(reel) {
+  const cellPx = CELL_SIZE;
+  const inner = reel.innerEl;
+  inner.innerHTML = '';
+
+  // Render VISIBLE_CELLS + 2 extra top/bottom for seamless scroll
+  const totalCells = VISIBLE_CELLS + 4;
+  inner.style.height = (cellPx * totalCells) + 'px';
+  reel.innerEl._totalCells = totalCells;
+
+  for (let j = 0; j < totalCells; j++) {
+    const cell = document.createElement('div');
+    cell.className = 'reel-cell';
+    cell.style.height = cellPx + 'px';
+    const span = document.createElement('span');
+    span.style.fontSize = (cellPx * 0.55) + 'px';
+    cell.appendChild(span);
+    inner.appendChild(cell);
+  }
+  updateReelCellSymbols(reel);
+  positionReel(reel);
+}
+
+function updateReelCellSymbols(reel) {
+  const cells = reel.innerEl.querySelectorAll('.reel-cell span');
+  const totalCells = cells.length;
+  const startStrip = Math.floor(reel.offset / CELL_SIZE);
+
+  cells.forEach((span, j) => {
+    const stripIdx = ((startStrip + j) % reel.strip.length + reel.strip.length) % reel.strip.length;
+    span.textContent = SYMBOLS[reel.strip[stripIdx]];
+  });
+}
+
+function positionReel(reel) {
+  const sub = reel.offset % CELL_SIZE;
+  reel.innerEl.style.transform = `translateY(${-sub - CELL_SIZE * 2}px)`;
+}
+
+// ============================================================
+// SPIN
+// ============================================================
+function startAllReels() {
+  reels.forEach(r => startReel(r));
+}
+
+function startReel(reel) {
+  reel.spinning = true;
+  reel.stopped = false;
+  reel.judgment = null;
+  reel.badgeEl.className = 'judgment-badge';
+  reel.frameEl.className = 'reel-frame spinning';
+  reel.lastTime = null;
+  spinLoop(reel);
+}
+
+function spinLoop(reel) {
+  if (!reel.spinning) return;
+
+  reel.rafId = requestAnimationFrame((now) => {
+    if (reel.lastTime === null) reel.lastTime = now;
+    const dt = (now - reel.lastTime) / 1000;
+    reel.lastTime = now;
+
+    reel.offset += SPIN_SPEED * CELL_SIZE * dt * (SPIN_FPS / 10);
+    updateReelCellSymbols(reel);
+    positionReel(reel);
+
+    spinLoop(reel);
+  });
+}
+
+function stopReel(reel) {
+  if (!reel.spinning || reel.stopped) return;
+  reel.spinning = false;
+  reel.stopped = true;
+  cancelAnimationFrame(reel.rafId);
+
+  // Snap to nearest cell
+  const snapped = Math.round(reel.offset / CELL_SIZE) * CELL_SIZE;
+  reel.offset = snapped;
+  updateReelCellSymbols(reel);
+  positionReel(reel);
+
+  // Center cell = index 2 from top of visible area
+  const centerStripIdx = ((Math.floor(reel.offset / CELL_SIZE) + 2) % reel.strip.length + reel.strip.length) % reel.strip.length;
+  reel.centerSymIndex = reel.strip[centerStripIdx];
+
+  // Judgment
+  const diff = Math.abs(reel.centerSymIndex - targets[reel.index]) % SYMBOLS.length;
+  const wrappedDiff = Math.min(diff, SYMBOLS.length - diff);
+  let j = 'MISS';
+  if (wrappedDiff === JUDGMENT_RANGE.PERFECT) j = 'PERFECT';
+  else if (wrappedDiff <= JUDGMENT_RANGE.GREAT) j = 'GREAT';
+  else if (wrappedDiff <= JUDGMENT_RANGE.GOOD) j = 'GOOD';
+  reel.judgment = j;
+
+  reel.frameEl.className = 'reel-frame stopped';
+  showBadge(reel);
+
+  checkAllStopped();
+}
+
+function showBadge(reel) {
+  reel.badgeEl.className = `judgment-badge ${reel.judgment}`;
+  reel.badgeEl.textContent = reel.judgment;
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => reel.badgeEl.classList.add('show'));
+  });
+}
+
+// ============================================================
+// EVENTS
+// ============================================================
+function onReelTap(index) {
+  if (gamePhase !== 'spinning') return;
+  const reel = reels[index];
+  if (!reel.spinning || reel.stopped) return;
+  stopReel(reel);
+}
+
+function onMainBtn() {
+  if (gamePhase === 'idle') {
+    startGame();
+  } else if (gamePhase === 'result') {
+    nextRound();
+  }
+}
+
+function onVictoryBtn() {
+  document.getElementById('victory-overlay').classList.remove('show');
+  init();
+}
+
+// ============================================================
+// GAME FLOW
+// ============================================================
+function startGame() {
+  gamePhase = 'spinning';
+  clearResult();
+  reels.forEach(r => {
+    r.badgeEl.className = 'judgment-badge';
+  });
+  startAllReels();
+  setInstruction('リールをタップして停止！');
+  setMainBtn('disabled');
+}
+
+function checkAllStopped() {
+  const allStopped = reels.every(r => r.stopped);
+  if (!allStopped) return;
+
+  gamePhase = 'result';
+  setTimeout(() => showResult(), 300);
+}
+
+function showResult() {
+  const judgments = reels.map(r => r.judgment);
+  const totalMultiplier = judgments.reduce((acc, j) => acc + DAMAGE_MULTIPLIER[j], 0);
+  const damage = Math.round(DAMAGE_BASE * totalMultiplier);
+
+  // Show damage
+  const dmgEl = document.getElementById('damage-text');
+  const subEl = document.getElementById('result-sub');
+  dmgEl.textContent = `${damage} DMG`;
+  subEl.textContent = judgments.join(' · ');
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      dmgEl.classList.add('show');
+      subEl.classList.add('show');
+    });
+  });
+
+  // Update HP
+  enemyHP = Math.max(0, enemyHP - damage);
+  updateHPUI();
+
+  // Hit animation
+  const sprite = document.getElementById('enemy-sprite');
+  sprite.classList.remove('hit');
+  void sprite.offsetWidth;
+  sprite.classList.add('hit');
+
+  if (enemyHP <= 0) {
+    setTimeout(() => showVictory(), 1000);
+  } else {
+    setInstruction('もう一度攻撃！');
+    setMainBtn('reset');
+  }
+}
+
+function nextRound() {
+  // New targets
+  targets = Array.from({ length: REEL_COUNT }, () => Math.floor(Math.random() * SYMBOLS.length));
+  renderTargets();
+  clearResult();
+  reels.forEach(r => {
+    r.stopped = false;
+    r.spinning = false;
+    r.judgment = null;
+    r.offset = Math.floor(Math.random() * 100) * CELL_SIZE;
+    r.frameEl.className = 'reel-frame';
+    r.badgeEl.className = 'judgment-badge';
+    renderReelCells(r);
+  });
+  gamePhase = 'idle';
+  setInstruction('STARTを押してリールを回転させよう');
+  setMainBtn('start');
+}
+
+function showVictory() {
+  document.getElementById('victory-overlay').classList.add('show');
+}
+
+// ============================================================
+// UI HELPERS
+// ============================================================
+function updateHPUI() {
+  const pct = (enemyHP / enemyMaxHP) * 100;
+  document.getElementById('hp-bar').style.width = pct + '%';
+  document.getElementById('hp-text').textContent = `${enemyHP} / ${enemyMaxHP}`;
+}
+
+function renderTargets() {
+  const el = document.getElementById('target-display');
+  el.innerHTML = '';
+  targets.forEach(t => {
+    const div = document.createElement('div');
+    div.className = 'target-sym';
+    div.textContent = SYMBOLS[t];
+    el.appendChild(div);
+  });
+}
+
+function clearResult() {
+  const dmgEl = document.getElementById('damage-text');
+  const subEl = document.getElementById('result-sub');
+  dmgEl.classList.remove('show');
+  subEl.classList.remove('show');
+  dmgEl.textContent = '— DMG';
+  subEl.textContent = '';
+}
+
+function setInstruction(text) {
+  document.getElementById('instruction').textContent = text;
+}
+
+function setMainBtn(mode) {
+  const btn = document.getElementById('main-btn');
+  btn.className = '';
+  if (mode === 'start') {
+    btn.className = 'start-btn';
+    btn.textContent = 'START';
+    btn.disabled = false;
+  } else if (mode === 'reset') {
+    btn.className = 'reset-btn';
+    btn.textContent = 'NEXT ROUND';
+    btn.disabled = false;
+  } else if (mode === 'disabled') {
+    btn.className = 'disabled';
+    btn.textContent = 'STOP REELS';
+    btn.disabled = true;
+  }
+}
+
+// ============================================================
+// BOOT
+// ============================================================
+init();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Slot Battle Prototype</title>
+<style>
+body {
+  font-family: sans-serif;
+  text-align: center;
+  background: #111;
+  color: #fff;
+}
+#reels {
+  display: flex;
+  justify-content: center;
+  margin: 20px 0;
+}
+.reel {
+  width: 80px;
+  height: 80px;
+  line-height: 80px;
+  border: 2px solid #fff;
+  margin: 5px;
+  font-size: 30px;
+}
+button {
+  padding: 10px 20px;
+  font-size: 16px;
+}
+#hpBar {
+  width: 80%;
+  height: 20px;
+  background: #444;
+  margin: 10px auto;
+}
+#hp {
+  height: 100%;
+  background: red;
+  width: 100%;
+}
+</style>
+</head>
+<body>
+
+<h2>Slot Battle</h2>
+
+<div id="hpBar"><div id="hp"></div></div>
+
+<div id="reels">
+  <div class="reel" id="r1">-</div>
+  <div class="reel" id="r2">-</div>
+  <div class="reel" id="r3">-</div>
+</div>
+
+<button onclick="start()">START</button>
+
+<p id="result"></p>
+
+<script>
+const symbols = ["🔥","💧","⚡","⭐","💀"];
+let intervals = [];
+let reels = [0,0,0];
+let spinning = false;
+let stopped = [false,false,false];
+let enemyHP = 100;
+
+function start(){
+  if(spinning) return;
+  spinning = true;
+  stopped = [false,false,false];
+
+  for(let i=0;i<3;i++){
+    intervals[i] = setInterval(()=>{
+      reels[i] = Math.floor(Math.random()*symbols.length);
+      document.getElementById("r"+(i+1)).innerText = symbols[reels[i]];
+    }, 100);
+  }
+}
+
+document.getElementById("reels").addEventListener("click", ()=>{
+  for(let i=0;i<3;i++){
+    if(!stopped[i]){
+      clearInterval(intervals[i]);
+      stopped[i] = true;
+      break;
+    }
+  }
+  if(stopped.every(v=>v)){
+    spinning = false;
+    judge();
+  }
+});
+
+function judge(){
+  // 仮の正解インデックス
+  const target = 0; // 🔥狙い
+  let score = 0;
+
+  reels.forEach(r=>{
+    let diff = Math.abs(r - target);
+    if(diff === 0) score += 2.0;
+    else if(diff === 1) score += 1.5;
+    else if(diff === 2) score += 1.0;
+    else score += 0.3;
+  });
+
+  let damage = Math.floor(score * 10);
+  enemyHP -= damage;
+  if(enemyHP < 0) enemyHP = 0;
+
+  document.getElementById("result").innerText =
+    "ダメージ: " + damage;
+
+  document.getElementById("hp").style.width = enemyHP + "%";
+
+  if(enemyHP === 0){
+    document.getElementById("result").innerText += " / 勝利！";
+  }
+}
+</script>
+
+</body>
+</html>
