@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Slot Improved</title>
+<style>
+body{
+  background:#111;color:#fff;text-align:center;
+}
+#reels{
+  display:flex;justify-content:center;
+}
+canvas{
+  border:2px solid #fff;
+  margin:5px;
+}
+#line{
+  height:2px;
+  background:#fff;
+  width:260px;
+  margin:10px auto;
+}
+.flash{
+  animation:flash 0.2s;
+}
+@keyframes flash{
+  0%{background:#fff;}
+  100%{background:#111;}
+}
+</style>
+</head>
+<body>
+
+<h2>SLOT</h2>
+<div id="reels"></div>
+<div id="line"></div>
+<button onclick="start()">START</button>
+<p id="result"></p>
+
+<script>
+const canvasList=[];
+const ctxList=[];
+const size=100;
+const symbols=["7","🔔","🍒","💧"];
+
+let reels=[
+  {pos:0, spinning:false},
+  {pos:0, spinning:false},
+  {pos:0, spinning:false}
+];
+
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+function playClick(){
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  osc.frequency.value=1000;
+  gain.gain.value=0.1;
+  osc.start();
+  osc.stop(audioCtx.currentTime+0.05);
+}
+
+function playPerfect(){
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  osc.frequency.value=1500;
+  gain.gain.value=0.2;
+  osc.start();
+  osc.stop(audioCtx.currentTime+0.1);
+}
+
+function create(){
+  const container=document.getElementById("reels");
+  for(let i=0;i<3;i++){
+    const c=document.createElement("canvas");
+    c.width=size;
+    c.height=size*3;
+    container.appendChild(c);
+    canvasList.push(c);
+    ctxList.push(c.getContext("2d"));
+
+    c.addEventListener("click",()=>stop(i));
+  }
+}
+
+function draw(){
+  for(let i=0;i<3;i++){
+    const ctx=ctxList[i];
+    ctx.clearRect(0,0,size,size*3);
+
+    for(let j=0;j<4;j++){
+      const y=((j*size)-reels[i].pos)% (symbols.length*size);
+
+      ctx.strokeStyle="#fff";
+      ctx.strokeRect(10,y+10,size-20,size-20);
+
+      ctx.font="40px sans-serif";
+      ctx.textAlign="center";
+      ctx.textBaseline="middle";
+      ctx.fillText(symbols[j],size/2,y+size/2);
+    }
+
+    // 中央ライン
+    ctx.strokeStyle="yellow";
+    ctx.beginPath();
+    ctx.moveTo(0,size*1.5);
+    ctx.lineTo(size,size*1.5);
+    ctx.stroke();
+  }
+}
+
+function loop(){
+  for(let i=0;i<3;i++){
+    if(reels[i].spinning){
+      reels[i].pos -= 10; // ←上から下に流れる
+    }
+  }
+  draw();
+  requestAnimationFrame(loop);
+}
+
+function start(){
+  reels.forEach(r=>{
+    r.spinning=true;
+  });
+}
+
+function stop(i){
+  if(!reels[i].spinning) return;
+  reels[i].spinning=false;
+
+  playClick();
+
+  if(reels.every(r=>!r.spinning)){
+    judge();
+  }
+}
+
+function judge(){
+  const results=reels.map(r=>{
+    return Math.round((r.pos/size)%symbols.length);
+  });
+
+  let perfect = results.every(r=>r===results[0]);
+
+  if(perfect){
+    playPerfect();
+    document.body.classList.add("flash");
+    setTimeout(()=>document.body.classList.remove("flash"),200);
+    document.getElementById("result").innerText="PERFECT!";
+  }else{
+    document.getElementById("result").innerText="MISS";
+  }
+}
+
+create();
+loop();
+</script>
+
+</body>
+</html>

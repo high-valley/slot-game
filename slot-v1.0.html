@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
+<title>SLOT BATTLE</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+
+:root{
+–bg:#0e0e16;–panel:#14141f;–border:#28284a;
+–gold:#e8c840;–red:#ff4060;–teal:#3eeec4;–purple:#b06afc;
+–text:#e8e8f2;–dim:#555580;
+}
+
+body{
+background:var(–bg);color:var(–text);
+font-family:‘Noto Sans JP’,sans-serif;
+height:100dvh;display:flex;flex-direction:column;align-items:center;
+overflow:hidden;
+}
+body::before{
+content:’’;position:fixed;inset:0;
+background:radial-gradient(ellipse at 15% 5%,rgba(80,40,160,.15) 0%,transparent 55%),
+radial-gradient(ellipse at 85% 95%,rgba(160,40,60,.12) 0%,transparent 55%);
+pointer-events:none;z-index:0;
+}
+
+#app{
+width:100%;max-width:420px;height:100dvh;
+display:flex;flex-direction:column;align-items:center;
+padding:6px 8px 8px;gap:5px;
+position:relative;z-index:1;overflow:hidden;
+}
+
+/* Title */
+.title{
+font-family:‘Orbitron’,monospace;font-size:14px;font-weight:900;
+letter-spacing:.18em;color:var(–gold);
+text-shadow:0 0 14px rgba(232,200,64,.5);flex-shrink:0;
+}
+
+/* Enemy */
+.enemy-area{
+width:100%;background:var(–panel);border:1px solid var(–border);
+border-radius:11px;padding:6px 11px;
+display:flex;align-items:center;gap:9px;flex-shrink:0;
+}
+.enemy-sprite{font-size:30px;line-height:1;flex-shrink:0;
+filter:drop-shadow(0 0 8px rgba(255,64,96,.45));}
+.enemy-sprite.hit{animation:eHit .38s ease;}
+@keyframes eHit{
+0%{transform:translateX(0) scale(1)}
+20%{transform:translateX(-7px) scale(1.07)}
+50%{transform:translateX(5px) scale(.94)}
+80%{transform:translateX(-3px)}
+100%{transform:translateX(0) scale(1)}
+}
+.enemy-info{flex:1;display:flex;flex-direction:column;gap:4px;}
+.enemy-header{display:flex;justify-content:space-between;align-items:center;}
+.enemy-name{font-family:‘Orbitron’,monospace;font-size:11px;font-weight:700;color:var(–red);letter-spacing:.08em;}
+#hp-text{font-family:‘Orbitron’,monospace;font-size:10px;font-weight:700;}
+.hp-bar-outer{width:100%;height:9px;background:#12122a;border-radius:5px;overflow:hidden;border:1px solid var(–border);}
+#hp-bar{height:100%;background:linear-gradient(90deg,#ff4060,#ff8050);border-radius:5px;transition:width .55s cubic-bezier(.4,0,.2,1);position:relative;}
+#hp-bar::after{content:’’;position:absolute;top:2px;left:4px;right:4px;height:2px;background:rgba(255,255,255,.28);border-radius:2px;}
+
+/* Chars */
+.chars-row{display:flex;gap:6px;width:100%;flex-shrink:0;}
+.char-slot{flex:1;display:flex;flex-direction:column;align-items:center;gap:1px;}
+.char-bubble{
+background:var(–panel);border:1px solid var(–border);border-radius:8px;
+padding:2px 4px;display:flex;flex-direction:column;align-items:center;gap:1px;width:100%;
+}
+.char-emoji{font-size:18px;line-height:1;}
+.char-emoji.attack{animation:cAtk .42s ease;}
+@keyframes cAtk{0%{transform:translateY(0) scale(1)}35%{transform:translateY(9px) scale(1.15)}70%{transform:translateY(-3px) scale(.95)}100%{transform:translateY(0) scale(1)}}
+.char-name{font-family:‘Orbitron’,monospace;font-size:7px;color:var(–dim);letter-spacing:.04em;}
+.char-arrow{font-size:10px;color:var(–gold);opacity:0;transition:opacity .3s;line-height:1;}
+.char-arrow.show{opacity:1;}
+
+/* Slot machine */
+.slot-machine{
+width:100%;flex:1;min-height:0;
+background:#090910;
+border:3px solid #3a3a60;
+border-radius:14px;
+overflow:hidden;
+position:relative;
+/* subtle metallic gradient */
+box-shadow:inset 0 2px 8px rgba(0,0,0,.6), 0 0 20px rgba(0,0,0,.4);
+}
+
+/* Win-line indicator strip at top */
+.winline-bar{
+position:absolute;top:0;left:0;right:0;height:3px;
+z-index:20;pointer-events:none;
+display:flex;
+}
+.winline-seg{flex:1;transition:background .3s,box-shadow .3s;}
+
+/* Reels row */
+.reels-row{
+position:absolute;inset:0;
+display:flex;
+}
+
+/* Single reel column */
+.reel-col{
+flex:1;position:relative;overflow:hidden;cursor:pointer;
+border-right:2px solid #1e1e36;
+}
+.reel-col:last-child{border-right:none;}
+
+/* The scrolling strip */
+.reel-strip{
+position:absolute;left:0;right:0;top:0;
+will-change:transform;
+}
+
+/* Each cell */
+.reel-cell{
+width:100%;
+display:flex;align-items:center;justify-content:center;
+flex-shrink:0;
+/* no border/line between cells */
+}
+
+/* Symbol image inside cell */
+.sym-img{
+width:82%;height:82%;
+object-fit:contain;
+display:block;
+image-rendering:crisp-edges;
+}
+
+/* TAP hint */
+.tap-hint{
+position:absolute;bottom:5px;left:0;right:0;
+display:flex;justify-content:center;
+pointer-events:none;z-index:20;opacity:0;transition:opacity .25s;
+}
+.reel-col.spinning .tap-hint{opacity:1;animation:hPulse .85s ease-in-out infinite;}
+@keyframes hPulse{0%,100%{opacity:.4}50%{opacity:1}}
+.tap-hint-inner{
+background:rgba(232,200,64,.1);border:1px solid rgba(232,200,64,.35);
+border-radius:4px;padding:1px 5px;
+font-size:8px;color:var(–gold);font-family:‘Orbitron’,monospace;letter-spacing:.1em;
+}
+
+/* Win flash overlays — row-wise */
+.row-overlay{
+position:absolute;left:0;right:0;pointer-events:none;z-index:10;opacity:0;
+}
+.row-overlay.flash{animation:rowFlash .7s ease forwards;}
+@keyframes rowFlash{0%{opacity:0}25%{opacity:1}70%{opacity:.7}100%{opacity:0}}
+
+/* Column flash */
+.col-overlay{
+position:absolute;top:0;bottom:0;pointer-events:none;z-index:10;opacity:0;
+}
+.col-overlay.flash{animation:rowFlash .7s ease forwards;}
+
+/* Diagonal flash canvas */
+#diag-canvas{
+position:absolute;inset:0;pointer-events:none;z-index:11;opacity:0;
+}
+#diag-canvas.flash{animation:rowFlash .7s ease forwards;}
+
+/* Result */
+.result-area{
+width:100%;min-height:32px;flex-shrink:0;
+display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
+}
+#damage-text{
+font-family:‘Orbitron’,monospace;font-size:21px;font-weight:900;
+color:var(–gold);text-shadow:0 0 16px rgba(232,200,64,.6);
+opacity:0;transform:scale(.6) translateY(8px);
+transition:all .32s cubic-bezier(.34,1.56,.64,1);
+}
+#damage-text.show{opacity:1;transform:scale(1) translateY(0);}
+#result-sub{font-size:9px;color:var(–dim);opacity:0;transition:opacity .3s .1s;}
+#result-sub.show{opacity:1;}
+
+/* Instruction */
+.instruction{font-size:10px;color:var(–dim);text-align:center;flex-shrink:0;letter-spacing:.04em;}
+
+/* Button */
+#main-btn{
+width:100%;max-width:250px;height:42px;border:none;border-radius:21px;
+font-family:‘Orbitron’,monospace;font-size:12px;font-weight:700;letter-spacing:.14em;
+cursor:pointer;transition:all .16s;flex-shrink:0;
+}
+#main-btn:active{transform:scale(.94);}
+#main-btn.start-btn{background:linear-gradient(135deg,#e8c840,#ff8c40);color:#0a0a12;box-shadow:0 3px 14px rgba(232,200,64,.35);}
+#main-btn.reset-btn{background:linear-gradient(135deg,#3eeec4,#3880f0);color:#0a0a12;box-shadow:0 3px 14px rgba(62,238,196,.3);}
+#main-btn.disabled{background:#1a1a2c;color:#3a3a60;cursor:default;box-shadow:none;}
+
+/* Victory */
+#victory-overlay{
+position:fixed;inset:0;background:rgba(0,0,0,.88);
+display:flex;flex-direction:column;align-items:center;justify-content:center;
+gap:16px;z-index:100;opacity:0;pointer-events:none;transition:opacity .5s;
+}
+#victory-overlay.show{opacity:1;pointer-events:all;}
+.victory-title{
+font-family:‘Orbitron’,monospace;font-size:32px;font-weight:900;
+color:var(–gold);text-shadow:0 0 32px rgba(232,200,64,.8);
+animation:vPulse 1.4s ease-in-out infinite;
+}
+@keyframes vPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
+.victory-sub{font-size:13px;color:var(–text);opacity:.65;}
+#victory-btn{
+padding:11px 34px;border:none;border-radius:22px;
+background:linear-gradient(135deg,#e8c840,#ff8c40);color:#0a0a12;
+font-family:‘Orbitron’,monospace;font-size:12px;font-weight:700;letter-spacing:.14em;
+cursor:pointer;box-shadow:0 4px 16px rgba(232,200,64,.4);
+}
+.stars{font-size:32px;letter-spacing:6px;animation:sFloat 2s ease-in-out infinite;}
+@keyframes sFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+</style>
+
+</head>
+<body>
+<div id="app">
+  <div class="title">⚔ SLOT BATTLE</div>
+
+  <div class="enemy-area">
+    <div class="enemy-sprite" id="enemy-sprite">🐉</div>
+    <div class="enemy-info">
+      <div class="enemy-header">
+        <span class="enemy-name">DARK DRAGON</span>
+        <span id="hp-text">300 / 300</span>
+      </div>
+      <div class="hp-bar-outer"><div id="hp-bar" style="width:100%"></div></div>
+    </div>
+  </div>
+
+  <div class="chars-row" id="chars-row"></div>
+
+  <!-- Slot Machine -->
+
+  <div class="slot-machine" id="slot-machine">
+    <div class="winline-bar" id="winline-bar"></div>
+    <div class="reels-row" id="reels-row"></div>
+    <!-- row overlays -->
+    <div class="row-overlay" id="ro-0"></div>
+    <div class="row-overlay" id="ro-1"></div>
+    <div class="row-overlay" id="ro-2"></div>
+    <!-- col overlays -->
+    <div class="col-overlay" id="co-0"></div>
+    <div class="col-overlay" id="co-1"></div>
+    <div class="col-overlay" id="co-2"></div>
+    <!-- diagonal canvas -->
+    <canvas id="diag-canvas"></canvas>
+  </div>
+
+  <div class="result-area">
+    <div id="damage-text">— DMG</div>
+    <div id="result-sub"></div>
+  </div>
+  <div class="instruction" id="instruction">STARTを押してリールを回転させよう</div>
+  <button id="main-btn" class="start-btn" onclick="onMainBtn()">START</button>
+</div>
+
+<div id="victory-overlay">
+  <div class="stars">⭐⭐⭐</div>
+  <div class="victory-title">VICTORY!</div>
+  <div class="victory-sub">敵を倒した！</div>
+  <button id="victory-btn" onclick="onVictoryBtn()">PLAY AGAIN</button>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+// SYMBOLS  — drawn with SVG-in-canvas approach via inline SVG
+// We use emoji but rendered large via canvas to mimic real slot art
+// Symbol IDs mirror the image: SEVEN, CHARА, CHARB, WATER, BELL, CHERRY, BLUE
+// ══════════════════════════════════════════════════════════════
+
+// Each symbol: id, emoji displayed, background colour, damage multiplier
+const SYM = [
+  // 0  SEVEN (red/gold banner)
+  { id:'SEVEN',  draw:drawSeven,  color:'#1a0810', glow:'#ff3050', mult:6.0 },
+  // 1  CHAR-A (blue character panel)
+  { id:'CHAR_A', draw:drawCharA,  color:'#08101e', glow:'#3070ff', mult:4.0 },
+  // 2  CHAR-B (dark character panel)
+  { id:'CHAR_B', draw:drawCharB,  color:'#100810', glow:'#8030cc', mult:4.0 },
+  // 3  WATERMELON
+  { id:'WATER',  draw:drawWater,  color:'#081208', glow:'#20c050', mult:2.5 },
+  // 4  BELL
+  { id:'BELL',   draw:drawBell,   color:'#141008', glow:'#e8c840', mult:2.0 },
+  // 5  CHERRY
+  { id:'CHERRY', draw:drawCherry, color:'#180808', glow:'#ff5060', mult:1.5 },
+  // 6  BLUE ORB
+  { id:'BLUE',   draw:drawBlue,   color:'#080c18', glow:'#50a0ff', mult:1.5 },
+];
+const SYM_N = SYM.length;
+
+// Strip for each reel (indices into SYM, length 20 matching image rows 1-20)
+// Reel 1 (left), Reel 2 (mid), Reel 3 (right) from image bottom→top:
+// Row 1→20 reading the image (bottom=1, top=20):
+const REEL_STRIPS = [
+  // left reel  (rows 1-20 bottom→top from image)
+  [5,2,5,4,6,5,5,4,6,5,4,5,4,6,5,0,1,4,5,5],
+  // mid reel
+  [3,5,2,6,3,6,1,4,3,3,5,5,4,6,3,4,3,4,6,2],
+  // right reel
+  [4,6,3,5,4,5,3,2,5,3,2,3,4,6,1,3,4,4,2,4],
+];
+const STRIP_LEN = REEL_STRIPS[0].length; // 20
+
+// Win lines: [col0,row0],[col1,row1],[col2,row2]  row 0=top,1=mid,2=bot
+const WIN_LINES = [
+  { id:'H-TOP', cells:[[0,0],[1,0],[2,0]], color:'#e8c840', type:'H', row:0 },
+  { id:'H-MID', cells:[[0,1],[1,1],[2,1]], color:'#e8c840', type:'H', row:1 },
+  { id:'H-BOT', cells:[[0,2],[1,2],[2,2]], color:'#e8c840', type:'H', row:2 },
+  { id:'V-L',   cells:[[0,0],[0,1],[0,2]], color:'#3eeec4', type:'V', col:0 },
+  { id:'V-M',   cells:[[1,0],[1,1],[1,2]], color:'#3eeec4', type:'V', col:1 },
+  { id:'V-R',   cells:[[2,0],[2,1],[2,2]], color:'#3eeec4', type:'V', col:2 },
+  { id:'D-\\',  cells:[[0,0],[1,1],[2,2]], color:'#b06afc', type:'D', diag:0 },
+  { id:'D-/',   cells:[[0,2],[1,1],[2,0]], color:'#b06afc', type:'D', diag:1 },
+];
+
+const CHARACTERS = [
+  { emoji:'⚔️', name:'WARRIOR' },
+  { emoji:'🔮', name:'MAGE'    },
+  { emoji:'🏹', name:'ARCHER'  },
+];
+
+const REEL_COUNT   = 3;
+const VISIBLE_ROWS = 3;
+const SPIN_PPS     = 750;
+const MAX_HP       = 300;
+const BASE_DMG     = 20;
+
+// ── STATE ───────────────────────────────────────────────────
+let enemyHP   = MAX_HP;
+let reels     = [];
+let gamePhase = 'idle';
+let cellPx    = 70;
+let grid      = [[0,0,0],[0,0,0],[0,0,0]]; // grid[col][row]
+
+// Pre-rendered symbol canvases (one per symbol per size)
+const symCanvases = {};
+
+// ══════════════════════════════════════════════════════════════
+// SYMBOL DRAWING FUNCTIONS
+// Each receives (ctx, x, y, size) and draws the symbol
+// ══════════════════════════════════════════════════════════════
+
+function drawSeven(ctx, x, y, s) {
+  // Red-gold banner background
+  const g = ctx.createLinearGradient(x, y, x, y+s);
+  g.addColorStop(0,'#cc1020'); g.addColorStop(0.5,'#ff3040'); g.addColorStop(1,'#880818');
+  ctx.fillStyle = g;
+  roundRect(ctx, x+s*.04, y+s*.08, s*.92, s*.84, s*.08);
+  ctx.fill();
+  // Gold border
+  ctx.strokeStyle='#e8c840'; ctx.lineWidth=s*.035;
+  roundRect(ctx, x+s*.04, y+s*.08, s*.92, s*.84, s*.08);
+  ctx.stroke();
+  // "7" text
+  ctx.fillStyle='#ffd700';
+  ctx.font=`bold ${s*.55}px serif`;
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('7', x+s*.5, y+s*.52);
+  // Spiky border detail
+  ctx.fillStyle='rgba(255,200,50,.18)';
+  ctx.beginPath();
+  for(let i=0;i<6;i++){
+    const a=i/6*Math.PI*2, r1=s*.44, r2=s*.5;
+    const px2=x+s/2+Math.cos(a)*r2, py2=y+s/2+Math.sin(a)*r2;
+    const px1=x+s/2+Math.cos(a+Math.PI/6)*r1, py1=y+s/2+Math.sin(a+Math.PI/6)*r1;
+    i===0?ctx.moveTo(px2,py2):ctx.lineTo(px2,py2);
+    ctx.lineTo(px1,py1);
+  }
+  ctx.closePath(); ctx.fill();
+}
+
+function drawCharA(ctx, x, y, s) {
+  // Blue character panel
+  const g = ctx.createLinearGradient(x, y, x+s, y+s);
+  g.addColorStop(0,'#0a1a3a'); g.addColorStop(1,'#0e2455');
+  ctx.fillStyle = g;
+  roundRect(ctx, x+s*.03, y+s*.05, s*.94, s*.9, s*.07);
+  ctx.fill();
+  ctx.strokeStyle='#2060cc'; ctx.lineWidth=s*.03;
+  roundRect(ctx, x+s*.03, y+s*.05, s*.94, s*.9, s*.07);
+  ctx.stroke();
+  // Silhouette: simple person shape
+  ctx.fillStyle='rgba(80,160,255,.9)';
+  // head
+  circle(ctx, x+s*.5, y+s*.3, s*.1); ctx.fill();
+  // body
+  ctx.fillRect(x+s*.38,y+s*.42,s*.24,s*.28);
+  // Text label
+  ctx.fillStyle='rgba(180,210,255,.7)';
+  ctx.font=`bold ${s*.12}px sans-serif`;
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('CHARACTER', x+s*.5, y+s*.82);
+  // Glow edge
+  ctx.strokeStyle='rgba(60,120,255,.4)'; ctx.lineWidth=s*.015;
+  roundRect(ctx, x+s*.03, y+s*.05, s*.94, s*.9, s*.07);
+  ctx.stroke();
+}
+
+function drawCharB(ctx, x, y, s) {
+  // Dark/purple character panel
+  const g = ctx.createLinearGradient(x, y, x+s, y+s);
+  g.addColorStop(0,'#160820'); g.addColorStop(1,'#240c38');
+  ctx.fillStyle = g;
+  roundRect(ctx, x+s*.03, y+s*.05, s*.94, s*.9, s*.07);
+  ctx.fill();
+  ctx.strokeStyle='#6020aa'; ctx.lineWidth=s*.03;
+  roundRect(ctx, x+s*.03, y+s*.05, s*.94, s*.9, s*.07);
+  ctx.stroke();
+  // Silhouette
+  ctx.fillStyle='rgba(160,80,240,.85)';
+  circle(ctx, x+s*.5, y+s*.3, s*.1); ctx.fill();
+  ctx.fillRect(x+s*.38,y+s*.42,s*.24,s*.28);
+  ctx.fillStyle='rgba(200,160,255,.6)';
+  ctx.font=`bold ${s*.12}px sans-serif`;
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('CHARACTER', x+s*.5, y+s*.82);
+  // Green ornament wreath hint
+  ctx.strokeStyle='rgba(140,60,220,.4)'; ctx.lineWidth=s*.015;
+  roundRect(ctx, x+s*.03, y+s*.05, s*.94, s*.9, s*.07);
+  ctx.stroke();
+}
+
+function drawWater(ctx, x, y, s) {
+  // Watermelon
+  const cx=x+s*.5, cy=y+s*.5, r=s*.38;
+  // Green rind
+  ctx.fillStyle='#228820';
+  ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.fill();
+  // Red flesh
+  ctx.fillStyle='#e83030';
+  ctx.beginPath(); ctx.arc(cx,cy,r*.82,0,Math.PI*2); ctx.fill();
+  // White inner
+  ctx.fillStyle='#ff6060';
+  ctx.beginPath(); ctx.arc(cx,cy,r*.70,0,Math.PI*2); ctx.fill();
+  // Seeds
+  ctx.fillStyle='#1a0a08';
+  [[-.15,-.1],[.15,-.1],[0,.15],[-.2,.15],[.2,.15]].forEach(([dx,dy])=>{
+    ctx.beginPath(); ctx.ellipse(cx+dx*s,cy+dy*s,s*.025,s*.04,dx*.5,0,Math.PI*2); ctx.fill();
+  });
+  // Rind stripe
+  ctx.strokeStyle='#33aa33'; ctx.lineWidth=s*.04;
+  ctx.beginPath(); ctx.arc(cx,cy,r*.92,0,Math.PI*2); ctx.stroke();
+  // Leaf and stem
+  ctx.strokeStyle='#228820'; ctx.lineWidth=s*.03;
+  ctx.beginPath(); ctx.moveTo(cx,cy-r); ctx.lineTo(cx,cy-r-s*.1); ctx.stroke();
+  ctx.fillStyle='#339933';
+  ctx.beginPath();
+  ctx.ellipse(cx+s*.04,cy-r-s*.06,s*.06,s*.03,-0.4,0,Math.PI*2); ctx.fill();
+}
+
+function drawBell(ctx, x, y, s) {
+  const cx=x+s*.5, cy=y+s*.5;
+  // Main bell body
+  const g=ctx.createRadialGradient(cx-s*.1,cy-s*.15,0,cx,cy,s*.4);
+  g.addColorStop(0,'#ffe060'); g.addColorStop(.5,'#e8a800'); g.addColorStop(1,'#a06000');
+  ctx.fillStyle=g;
+  // Bell shape via bezier
+  ctx.beginPath();
+  ctx.moveTo(cx,cy-s*.38);
+  ctx.bezierCurveTo(cx+s*.32,cy-s*.3, cx+s*.42,cy+s*.1, cx+s*.38,cy+s*.28);
+  ctx.lineTo(cx-s*.38,cy+s*.28);
+  ctx.bezierCurveTo(cx-s*.42,cy+s*.1, cx-s*.32,cy-s*.3, cx,cy-s*.38);
+  ctx.closePath(); ctx.fill();
+  // Shade
+  ctx.fillStyle='rgba(0,0,0,.2)';
+  ctx.beginPath();
+  ctx.moveTo(cx+s*.1,cy-s*.3);
+  ctx.bezierCurveTo(cx+s*.32,cy-s*.2,cx+s*.38,cy+s*.1,cx+s*.34,cy+s*.28);
+  ctx.lineTo(cx+s*.1,cy+s*.28); ctx.closePath(); ctx.fill();
+  // Rim at bottom
+  ctx.fillStyle='#c08000';
+  ctx.fillRect(cx-s*.40,cy+s*.26,s*.80,s*.07);
+  // Clapper
+  ctx.fillStyle='#c08000';
+  circle(ctx,cx,cy+s*.38,s*.06); ctx.fill();
+  // Shine
+  ctx.fillStyle='rgba(255,255,255,.35)';
+  ctx.beginPath(); ctx.ellipse(cx-s*.1,cy-s*.22,s*.06,s*.1,-0.5,0,Math.PI*2); ctx.fill();
+  // Top knob
+  ctx.fillStyle='#e8a800';
+  ctx.fillRect(cx-s*.04,cy-s*.44,s*.08,s*.08);
+}
+
+function drawCherry(ctx, x, y, s) {
+  // Two cherries
+  const c1x=x+s*.3, c1y=y+s*.62, c2x=x+s*.7, c2y=y+s*.58;
+  const r=s*.2;
+  // Stems
+  ctx.strokeStyle='#3a8020'; ctx.lineWidth=s*.03;
+  ctx.beginPath(); ctx.moveTo(c1x,c1y-r); ctx.quadraticCurveTo(c1x+s*.08,c1y-s*.4,x+s*.5,y+s*.22); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(c2x,c2y-r); ctx.quadraticCurveTo(c2x-s*.08,c2y-s*.35,x+s*.5,y+s*.22); ctx.stroke();
+  // Small leaf
+  ctx.fillStyle='#40a020';
+  ctx.beginPath(); ctx.ellipse(x+s*.5+s*.06,y+s*.2,s*.07,s*.035,.5,0,Math.PI*2); ctx.fill();
+  // Cherry 1
+  const rg1=ctx.createRadialGradient(c1x-r*.3,c1y-r*.3,0,c1x,c1y,r);
+  rg1.addColorStop(0,'#ff7070'); rg1.addColorStop(.6,'#cc1010'); rg1.addColorStop(1,'#800808');
+  ctx.fillStyle=rg1;
+  ctx.beginPath(); ctx.arc(c1x,c1y,r,0,Math.PI*2); ctx.fill();
+  // Cherry 2
+  const rg2=ctx.createRadialGradient(c2x-r*.3,c2y-r*.3,0,c2x,c2y,r);
+  rg2.addColorStop(0,'#ff7070'); rg2.addColorStop(.6,'#cc1010'); rg2.addColorStop(1,'#800808');
+  ctx.fillStyle=rg2;
+  ctx.beginPath(); ctx.arc(c2x,c2y,r,0,Math.PI*2); ctx.fill();
+  // Shine
+  ctx.fillStyle='rgba(255,255,255,.45)';
+  ctx.beginPath(); ctx.ellipse(c1x-r*.25,c1y-r*.25,r*.22,r*.14,-0.5,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(c2x-r*.25,c2y-r*.25,r*.22,r*.14,-0.5,0,Math.PI*2); ctx.fill();
+}
+
+function drawBlue(ctx, x, y, s) {
+  // Blue oval gem / badge
+  const cx=x+s*.5, cy=y+s*.5;
+  const rg=ctx.createRadialGradient(cx-s*.08,cy-s*.12,0,cx,cy,s*.42);
+  rg.addColorStop(0,'#b0d8ff'); rg.addColorStop(.3,'#4090e8'); rg.addColorStop(.7,'#1050c0'); rg.addColorStop(1,'#082060');
+  ctx.fillStyle=rg;
+  ctx.beginPath(); ctx.ellipse(cx,cy,s*.42,s*.36,0,0,Math.PI*2); ctx.fill();
+  // Rim
+  ctx.strokeStyle='#60b0ff'; ctx.lineWidth=s*.03;
+  ctx.beginPath(); ctx.ellipse(cx,cy,s*.42,s*.36,0,0,Math.PI*2); ctx.stroke();
+  // Inner figure silhouette (scales of justice hint)
+  ctx.fillStyle='rgba(200,230,255,.7)';
+  ctx.font=`${s*.28}px sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('⚖', cx, cy+s*.02);
+  // Shine
+  ctx.fillStyle='rgba(255,255,255,.4)';
+  ctx.beginPath(); ctx.ellipse(cx-s*.1,cy-s*.15,s*.12,s*.07,-0.4,0,Math.PI*2); ctx.fill();
+}
+
+// ── helpers ─────────────────────────────────────────────────
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.lineTo(x+w-r,y); ctx.arcTo(x+w,y,x+w,y+r,r);
+  ctx.lineTo(x+w,y+h-r); ctx.arcTo(x+w,y+h,x+w-r,y+h,r);
+  ctx.lineTo(x+r,y+h); ctx.arcTo(x,y+h,x,y+h-r,r);
+  ctx.lineTo(x,y+r); ctx.arcTo(x,y,x+r,y,r);
+  ctx.closePath();
+}
+function circle(ctx,cx,cy,r){ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);}
+
+// ── Render a symbol to an offscreen canvas ──────────────────
+function getSymCanvas(symIdx, size) {
+  const key = `${symIdx}_${size}`;
+  if (symCanvases[key]) return symCanvases[key];
+  const c = document.createElement('canvas');
+  c.width = c.height = size;
+  const ctx = c.getContext('2d');
+  // Background fill
+  ctx.fillStyle = SYM[symIdx].color;
+  ctx.fillRect(0,0,size,size);
+  SYM[symIdx].draw(ctx, 0, 0, size);
+  symCanvases[key] = c;
+  return c;
+}
+
+// ══════════════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════════════
+function init() {
+  enemyHP   = MAX_HP;
+  reels     = [];
+  gamePhase = 'idle';
+  grid      = [[0,0,0],[0,0,0],[0,0,0]];
+  updateHPUI();
+  buildChars();
+  buildLayout();
+  clearResult();
+  setInstruction('STARTを押してリールを回転させよう');
+  setMainBtn('start');
+}
+
+// ── Characters ──────────────────────────────────────────────
+function buildChars() {
+  const row = document.getElementById('chars-row');
+  row.innerHTML = '';
+  CHARACTERS.forEach((ch,i)=>{
+    const slot   = mk('div','char-slot');
+    const bubble = mk('div','char-bubble');
+    const emoji  = mk('div','char-emoji'); emoji.id=`ce-${i}`; emoji.textContent=ch.emoji;
+    const name   = mk('div','char-name');  name.textContent=ch.name;
+    const arrow  = mk('div','char-arrow'); arrow.id=`ca-${i}`; arrow.textContent='▼';
+    bubble.append(emoji,name); slot.append(bubble,arrow); row.appendChild(slot);
+  });
+}
+
+// ── Layout (measures then builds) ───────────────────────────
+function buildLayout() {
+  const reelsRow = document.getElementById('reels-row');
+  reelsRow.innerHTML = '';
+
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    const mach = document.getElementById('slot-machine');
+    const machH = mach.getBoundingClientRect().height || 210;
+    cellPx = Math.floor(machH / VISIBLE_ROWS);
+
+    // Setup row overlays heights
+    for(let r=0;r<VISIBLE_ROWS;r++){
+      const ov=document.getElementById(`ro-${r}`);
+      ov.style.cssText=`top:${r*cellPx}px;height:${cellPx}px;left:0;right:0;`;
+    }
+
+    // Setup col overlays widths (each 1/3 of machine width)
+    const machW = mach.getBoundingClientRect().width || 300;
+    const colW  = Math.floor(machW / 3);
+    for(let c=0;c<3;c++){
+      const ov=document.getElementById(`co-${c}`);
+      ov.style.cssText=`left:${c*colW}px;width:${colW}px;top:0;bottom:0;`;
+    }
+
+    // Setup diagonal canvas
+    const dc = document.getElementById('diag-canvas');
+    dc.width = machW; dc.height = machH;
+    dc.style.width = machW+'px'; dc.style.height = machH+'px';
+
+    // Pre-render symbol canvases at this size
+    for(let s=0;s<SYM_N;s++) getSymCanvas(s, cellPx);
+
+    // Build reel columns
+    for(let i=0;i<REEL_COUNT;i++){
+      const reel = {
+        index: i,
+        strip: [...REEL_STRIPS[i]],
+        cellPx,
+        offset: Math.random() * STRIP_LEN * cellPx,
+        spinning:false, stopped:false,
+        rafId:null, lastTime:null,
+        colEl:null, canvas:null,
+      };
+
+      const col = mk('div','reel-col');
+      col.addEventListener('click',    ()=>onReelTap(i));
+      col.addEventListener('touchend', (e)=>{e.preventDefault();onReelTap(i);});
+
+      // Use a canvas to render symbols
+      const canvas = document.createElement('canvas');
+      canvas.style.cssText='position:absolute;inset:0;';
+      canvas.width  = Math.floor(machW/3);
+      canvas.height = machH;
+      col.appendChild(canvas);
+
+      // TAP hint
+      const hint = mk('div','tap-hint');
+      hint.innerHTML='<div class="tap-hint-inner">TAP</div>';
+      col.appendChild(hint);
+
+      reelsRow.appendChild(col);
+      reel.colEl  = col;
+      reel.canvas = canvas;
+      reels.push(reel);
+
+      drawReelCanvas(reel);
+    }
+
+    // Winline bar segments
+    buildWinlineBar(machW);
+  }));
+}
+
+function buildWinlineBar(w) {
+  const bar = document.getElementById('winline-bar');
+  bar.innerHTML='';
+  WIN_LINES.forEach(line=>{
+    const seg=mk('div','winline-seg');
+    seg.id=`wl-${line.id}`;
+    bar.appendChild(seg);
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
+// CANVAS REEL RENDERING
+// Top-to-bottom: offset increases → strip flows down
+// Visible cells at (offset/cellPx) .. (offset/cellPx + VISIBLE_ROWS-1)
+// ══════════════════════════════════════════════════════════════
+function drawReelCanvas(reel) {
+  const { canvas, cellPx: cp, offset, strip } = reel;
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width, h = canvas.height;
+
+  ctx.clearRect(0,0,w,h);
+
+  // Dark bg
+  ctx.fillStyle='#09090f';
+  ctx.fillRect(0,0,w,h);
+
+  // sub-pixel offset for smooth scroll
+  const sub  = offset % cp;
+  const base = Math.floor(offset / cp);
+
+  for(let row=0; row<VISIBLE_ROWS+1; row++){
+    const symIdx = strip[((base + row) % STRIP_LEN + STRIP_LEN) % STRIP_LEN];
+    const sy     = Math.round(row * cp - sub);
+    const pad    = Math.floor(cp * .06);
+
+    // Glow behind symbol
+    const gCol = SYM[symIdx].glow;
+    const rg = ctx.createRadialGradient(w/2,sy+cp/2,0,w/2,sy+cp/2,cp*.45);
+    rg.addColorStop(0,gCol+'28'); rg.addColorStop(1,'transparent');
+    ctx.fillStyle=rg;
+    ctx.fillRect(0,sy,w,cp);
+
+    // Draw symbol from pre-rendered canvas
+    const sc = getSymCanvas(symIdx, cp - pad*2);
+    ctx.drawImage(sc, pad, sy + pad);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// SPIN  (offset increases → strip flows DOWNWARD)
+// ══════════════════════════════════════════════════════════════
+function startAllReels(){ reels.forEach(startReel); }
+
+function startReel(reel){
+  reel.spinning=true; reel.stopped=false; reel.lastTime=null;
+  reel.colEl.className='reel-col spinning';
+  spinLoop(reel);
+}
+
+function spinLoop(reel){
+  if(!reel.spinning) return;
+  reel.rafId=requestAnimationFrame(now=>{
+    if(!reel.lastTime) reel.lastTime=now;
+    const dt=Math.min((now-reel.lastTime)/1000,.05);
+    reel.lastTime=now;
+    reel.offset=(reel.offset + SPIN_PPS*dt) % (STRIP_LEN*reel.cellPx);
+    drawReelCanvas(reel);
+    spinLoop(reel);
+  });
+}
+
+function stopReel(reel){
+  if(!reel.spinning||reel.stopped) return;
+  reel.spinning=false; reel.stopped=true;
+  cancelAnimationFrame(reel.rafId);
+
+  // Snap to nearest cell
+  const snapped=Math.round(reel.offset/reel.cellPx)*reel.cellPx;
+  reel.offset=snapped;
+  drawReelCanvas(reel);
+
+  // Read 3 visible cells: row 0=top, 1=mid, 2=bot
+  const base=Math.floor(reel.offset/reel.cellPx);
+  for(let row=0;row<VISIBLE_ROWS;row++){
+    const idx=((base+row)%STRIP_LEN+STRIP_LEN)%STRIP_LEN;
+    grid[reel.index][row]=reel.strip[idx];
+  }
+
+  reel.colEl.className='reel-col stopped';
+  triggerCharAttack(reel.index);
+  checkAllStopped();
+}
+
+// ══════════════════════════════════════════════════════════════
+// WIN EVALUATION
+// ══════════════════════════════════════════════════════════════
+function evaluateWins(){
+  return WIN_LINES.filter(line=>{
+    const syms=line.cells.map(([c,r])=>grid[c][r]);
+    return syms[0]===syms[1] && syms[1]===syms[2];
+  }).map(line=>({ line, sym:SYM[grid[line.cells[0][0]][line.cells[0][1]]] }));
+}
+
+// ══════════════════════════════════════════════════════════════
+// CHECK ALL STOPPED
+// ══════════════════════════════════════════════════════════════
+function checkAllStopped(){
+  if(!reels.every(r=>r.stopped)) return;
+  gamePhase='result';
+  setTimeout(showResult, 300);
+}
+
+// ══════════════════════════════════════════════════════════════
+// SHOW RESULT
+// ══════════════════════════════════════════════════════════════
+function showResult(){
+  const hits=evaluateWins();
+  let damage=0;
+  const names=[];
+
+  if(hits.length===0){
+    names.push('NO WIN');
+  } else {
+    hits.forEach(h=>{
+      damage+=Math.round(BASE_DMG*h.sym.mult);
+      names.push(h.line.id);
+    });
+  }
+
+  flashWins(hits);
+
+  const dmgEl=document.getElementById('damage-text');
+  const subEl=document.getElementById('result-sub');
+  dmgEl.textContent=damage>0?`${damage} DMG`:'NO WIN';
+  subEl.textContent=names.join(' · ');
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    dmgEl.classList.add('show');
+    subEl.classList.add('show');
+  }));
+
+  if(damage>0){
+    enemyHP=Math.max(0,enemyHP-damage);
+    updateHPUI();
+    const sp=document.getElementById('enemy-sprite');
+    sp.classList.remove('hit'); void sp.offsetWidth; sp.classList.add('hit');
+  }
+
+  if(enemyHP<=0) setTimeout(showVictory,900);
+  else { setInstruction('もう一度攻撃！'); setMainBtn('reset'); }
+}
+
+// ── Flash win-line overlays ───────────────────────────────
+function flashWins(hits){
+  // Reset winline bar
+  document.querySelectorAll('.winline-seg').forEach(s=>{ s.style.background=''; s.style.boxShadow=''; });
+  // Reset row/col overlays
+  for(let r=0;r<3;r++){ const o=document.getElementById(`ro-${r}`); o.className='row-overlay'; o.style.background=''; }
+  for(let c=0;c<3;c++){ const o=document.getElementById(`co-${c}`); o.className='col-overlay'; o.style.background=''; }
+  // Reset diag canvas
+  const dc=document.getElementById('diag-canvas');
+  dc.className=''; clearDiag(dc);
+
+  if(hits.length===0) return;
+
+  hits.forEach(({line,sym})=>{
+    const col=line.color;
+    // Light winline bar segment
+    const seg=document.getElementById(`wl-${line.id}`);
+    if(seg){ seg.style.background=col; seg.style.boxShadow=`0 0 6px ${col}`; }
+
+    if(line.type==='H'){
+      const ov=document.getElementById(`ro-${line.row}`);
+      ov.style.background=`${col}22`;
+      ov.style.borderTop=`2px solid ${col}88`;
+      ov.style.borderBottom=`2px solid ${col}88`;
+      ov.classList.add('flash');
+    } else if(line.type==='V'){
+      const ov=document.getElementById(`co-${line.col}`);
+      ov.style.background=`${col}22`;
+      ov.style.borderLeft=`2px solid ${col}88`;
+      ov.style.borderRight=`2px solid ${col}88`;
+      ov.classList.add('flash');
+    } else if(line.type==='D'){
+      drawDiagFlash(dc, line.diag, col);
+      dc.className='flash';
+    }
+  });
+}
+
+function clearDiag(dc){
+  const ctx=dc.getContext('2d');
+  ctx.clearRect(0,0,dc.width,dc.height);
+}
+
+function drawDiagFlash(dc, diagType, col){
+  const ctx=dc.getContext('2d');
+  const w=dc.width, h=dc.height;
+  const cp=cellPx;
+
+  ctx.save();
+  ctx.globalAlpha=0.35;
+  ctx.strokeStyle=col; ctx.lineWidth=4;
+  ctx.shadowColor=col; ctx.shadowBlur=12;
+
+  const centers=[[w/6,cp/2],[w/2,cp+cp/2],[5*w/6,2*cp+cp/2]];
+  const pts = diagType===0
+    ? centers
+    : [[w/6,2*cp+cp/2],[w/2,cp+cp/2],[5*w/6,cp/2]];
+
+  ctx.beginPath();
+  ctx.moveTo(pts[0][0],pts[0][1]);
+  ctx.lineTo(pts[1][0],pts[1][1]);
+  ctx.lineTo(pts[2][0],pts[2][1]);
+  ctx.stroke();
+  ctx.restore();
+}
+
+// ══════════════════════════════════════════════════════════════
+// CHAR ANIMATION
+// ══════════════════════════════════════════════════════════════
+function triggerCharAttack(i){
+  const e=document.getElementById(`ce-${i}`);
+  const a=document.getElementById(`ca-${i}`);
+  if(e){e.classList.remove('attack');void e.offsetWidth;e.classList.add('attack');}
+  if(a){a.style.color='#e8c840';a.classList.add('show');setTimeout(()=>a.classList.remove('show'),700);}
+}
+
+// ══════════════════════════════════════════════════════════════
+// EVENTS & FLOW
+// ══════════════════════════════════════════════════════════════
+function onReelTap(i){
+  if(gamePhase!=='spinning') return;
+  if(i<reels.length) stopReel(reels[i]);
+}
+function onMainBtn(){
+  if(gamePhase==='idle') startGame();
+  else if(gamePhase==='result') nextRound();
+}
+function onVictoryBtn(){
+  document.getElementById('victory-overlay').classList.remove('show');
+  init();
+}
+
+function startGame(){
+  gamePhase='spinning'; clearResult();
+  startAllReels();
+  setInstruction('リールをタップして停止！');
+  setMainBtn('disabled');
+}
+
+function nextRound(){
+  clearResult();
+  grid=[[0,0,0],[0,0,0],[0,0,0]];
+  // Reset overlays
+  for(let r=0;r<3;r++){const o=document.getElementById(`ro-${r}`);o.className='row-overlay';o.style.cssText=o.style.cssText;}
+  for(let c=0;c<3;c++){const o=document.getElementById(`co-${c}`);o.className='col-overlay';o.style.cssText=o.style.cssText;}
+  clearDiag(document.getElementById('diag-canvas'));
+  document.getElementById('diag-canvas').className='';
+  document.querySelectorAll('.winline-seg').forEach(s=>{s.style.background='';s.style.boxShadow='';});
+  reels.forEach(r=>{
+    r.stopped=false; r.spinning=false;
+    r.offset=Math.random()*STRIP_LEN*r.cellPx;
+    r.colEl.className='reel-col';
+    drawReelCanvas(r);
+    const a=document.getElementById(`ca-${r.index}`);
+    if(a) a.classList.remove('show');
+  });
+  gamePhase='idle';
+  setInstruction('STARTを押してリールを回転させよう');
+  setMainBtn('start');
+}
+
+function showVictory(){
+  document.getElementById('victory-overlay').classList.add('show');
+}
+
+// ── UI ───────────────────────────────────────────────────────
+function updateHPUI(){
+  document.getElementById('hp-bar').style.width=(enemyHP/MAX_HP*100)+'%';
+  document.getElementById('hp-text').textContent=`${enemyHP} / ${MAX_HP}`;
+}
+function clearResult(){
+  const d=document.getElementById('damage-text');
+  const s=document.getElementById('result-sub');
+  d.classList.remove('show'); s.classList.remove('show');
+  d.textContent='— DMG'; s.textContent='';
+}
+function setInstruction(t){ document.getElementById('instruction').textContent=t; }
+function setMainBtn(mode){
+  const b=document.getElementById('main-btn');
+  if(mode==='start'){b.className='start-btn';b.textContent='START';b.disabled=false;}
+  else if(mode==='reset'){b.className='reset-btn';b.textContent='NEXT ROUND';b.disabled=false;}
+  else{b.className='disabled';b.textContent='STOP REELS';b.disabled=true;}
+}
+function mk(tag,cls){const e=document.createElement(tag);if(cls)e.className=cls;return e;}
+
+// ── BOOT ────────────────────────────────────────────────────
+init();
+</script>
+
+</body>
+</html>
